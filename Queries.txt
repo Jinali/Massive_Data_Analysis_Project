@@ -1,0 +1,194 @@
+GPS Anomaly:
+
+Taxis where GPS not don't work at all
+
+select
+        a.medallion
+from
+        (select
+                distinct medallion as medallion
+        from
+                trip_data_all where pickup_longitude = 0 and pickup_latitude = 0 and dropoff_longitude = 0 and dropoff_latitude = 0) a
+        LEFT OUTER JOIN
+        (select
+                distinct medallion as medallion
+        from
+                trip_data_all
+        where
+                pickup_longitude <> 0 or pickup_latitude <> 0 or dropoff_longitude <> 0 or dropoff_latitude <> 0) b
+ON
+        a.medallion = b.medallion
+WHERE
+        b.medallion IS NULL;
+
+
+Count of rides where Taxis where GPS not don't work at all
+
+select
+        c.medallion as med,month(pickup_datetime),count(1)
+from
+        trip_data_all c
+        join
+        (select
+                a.medallion as medallion
+        from
+                (select
+                        distinct medallion as medallion
+                from
+                        trip_data_all
+                where pickup_longitude = 0 and pickup_latitude = 0 and dropoff_longitude = 0 and dropoff_latitude = 0) a
+                LEFT OUTER JOIN
+                (select
+                        distinct medallion as medallion
+                from
+                        trip_data_all
+                where
+                        pickup_longitude <> 0 or pickup_latitude <> 0 or dropoff_longitude <> 0 or dropoff_latitude <> 0) b
+        ON
+                a.medallion = b.medallion
+        WHERE
+                b.medallion IS NULL) d
+on
+        c.medallion=d.medallion
+group by
+        c.medallion,month(pickup_datetime)
+order by med;
+
+
+
+Taxis where GPS not don't work at all at some month of the year
+
+select
+        a.medallion as med
+from
+        (SELECT
+                medallion as medallion,month(pickup_datetime) as month,count(1) as count
+        FROM
+                trip_data_all
+        where
+                pickup_longitude = 0 and pickup_latitude = 0 and dropoff_longitude = 0 and dropoff_latitude = 0
+        group by
+        medallion,month(pickup_datetime)) a
+        join
+        (SELECT
+                medallion as medallion,month(pickup_datetime) as month,count(1) as count
+        FROM
+                trip_data_all
+        group by
+                medallion,month(pickup_datetime)) b
+        on
+                a.medallion=b.medallion and a.month=b.month and a.count=b.count
+where
+        a.count>600
+group by
+        a.medallion;
+
+
+Rides where pickup_longitude and pickup_latitude are not recorded
+
+select
+        count(1)
+from
+        trip_data_all
+where
+        pickup_longitude = 0 and pickup_latitude = 0 and dropoff_longitude <> 0 and dropoff_latitude <> 0;
+
+
+Rides where dropoff_longitude and dropoff_latitude are not recorded
+
+select
+        count(1)
+from
+        trip_data_all
+where
+        pickup_longitude <> 0 and pickup_latitude <> 0 and dropoff_longitude = 0 and dropoff_latitude = 0;
+
+
+
+
+
+
+
+Tip : Tip amount decreases when trip fare reaches tens place and then increases gradually
+
+select
+        a.avg,b.avg,c.avg,d.avg,e.avg
+from
+        (select
+                avg(tip_amount) as avg,  1 as v
+        from
+                trip_fare_all
+        where
+                tip_amount>0 and payment_type='CRD' and (fare_amount + surcharge + mta_tax) >= 58 and (fare_amount + surcharge + mta_tax) < 59) a
+        join
+        (select
+                avg(tip_amount) as avg,  1 as v
+        from
+                trip_fare_all
+        where
+                tip_amount>0 and payment_type='CRD' and (fare_amount + surcharge + mta_tax) >= 59 and (fare_amount + surcharge + mta_tax) < 60) b
+        join
+        (select
+                avg(tip_amount) as avg,  1 as v
+        from
+                trip_fare_all
+        where
+                tip_amount>0 and payment_type='CRD' and (fare_amount + surcharge + mta_tax) >= 60 and (fare_amount + surcharge + mta_tax) < 61) c
+        join
+        (select
+                avg(tip_amount) as avg,  1 as v
+        from
+                trip_fare_all
+        where
+                tip_amount>0 and payment_type='CRD' and (fare_amount + surcharge + mta_tax) >= 61 and (fare_amount + surcharge + mta_tax) < 62) d
+        join
+        (select
+                avg(tip_amount) as avg,  1 as v
+        from
+                trip_fare_all
+        where
+                tip_amount>0 and payment_type='CRD' and (fare_amount + surcharge + mta_tax) >= 62 and (fare_amount + surcharge + mta_tax) < 63) e
+on
+        a.v = b.v and b.v=c.v and c.v=d.v and d.v=e.v;
+
+
+Tip: Drinking and tipping don’t go together
+
+
+select
+        a.hour as hour,a.zc,b.tc,a.zc/(b.tc)*100
+from
+        (select
+                hour(pickup_datetime) as hour, count(1) as zc
+        from
+                trip_fare_all
+        where
+                tip_amount=0 and payment_type='CRD'
+        group
+                by hour(pickup_datetime)
+        order
+                by hour) a
+        join
+        (select
+                hour(pickup_datetime) as hour, count(1) as tc
+        from
+                trip_fare_all
+        where
+                payment_type='CRD'
+        group by
+                hour(pickup_datetime)
+        order by
+                hour) b
+on
+        a.hour=b.hour order by hour;
+
+Drivers change shift around 4 pm and its difficult to find taxi during that time
+
+select
+        hour(pickup_datetime) as hour_tip, count(1)/365
+from
+        trip_data_all
+group by
+        hour(pickup_datetime)
+order by
+        hour_tip;
